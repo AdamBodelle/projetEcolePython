@@ -634,13 +634,16 @@ def main():
 
     game_music = [
         load_sound('Flower of Soul ~ Another Dream (Touhou 9, PoFV) [HD].mp3'),
-        load_sound('Night-of-night.mp3')
+        load_sound('Night-of-night.mp3'),
+        load_sound('badApple.mp3'),
+        load_sound('Flandre.mp3')
     ]
     current_game_music = game_music[random.randint(0, len(game_music)-1)]
     menu_music = load_sound('[Zenless Zone Zero OST] Dusk in The Wilderness.mp3')
     end_music = load_sound('Spider-Cochon.mp3')
     death_sound = load_sound('Touhou Death Sound Effect.mp3')
     hit_sound = load_sound('Undertale Sound Effect.mp3')
+    victory_sound = load_sound('FF VII victory theme.mp3')
 
 
     # Initialize Game Groups
@@ -904,6 +907,8 @@ def main():
             if player.hp <= 0 or player.victory:
                 if not Player.victory:
                     death_sound.play()
+                else:
+                    victory_sound.play()
                 for enemy in enemies:
                     enemy.kill()
                 for bullet in bullets:
