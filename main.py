@@ -1,16 +1,16 @@
 import pygame, random, os.path
 from pygame.locals import *
-from fractions import Fraction
 import math
 import numpy as np
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
-WIDTH, HEIGHT = 1200, 600
+WIDTH, HEIGHT = 1200, 600 # Dimension de la fenêtre
 SCREEN_RECT = Rect(0,0,WIDTH, HEIGHT)
 SCREEN = pygame.display.set_mode(SCREEN_RECT.size)
-SCORE_FILE = "resource/score_save/score.txt"  # File to store the score
+SCORE_FILE = "resource/score_save/score.txt"  # Fichier pour sauvegarder les scores
 
+# Fonction pour charger une image dans les ressources
 def load_image(file):
     file = os.path.join(main_dir, 'resource/Image', file)
     try:
@@ -19,6 +19,7 @@ def load_image(file):
         raise SystemExit('Could not load image "%s" %s'%(file, pygame.get_error()))
     return surface.convert_alpha()
 
+# Fonction pour charger plusieurs images
 def load_images(*files):
     imgs = []
     for file in files:
@@ -29,6 +30,7 @@ def load_images(*files):
 class dummysound:
     def play(self): pass
 
+# Fonction pour charger un fichier audio
 def load_sound(file):
     if not pygame.mixer: return dummysound()
     file = os.path.join(main_dir, 'resource/Audio', file)
@@ -40,31 +42,31 @@ def load_sound(file):
     return dummysound()
 
 
-# Ensure SCORE_FILE exists and contains valid data
+# Vérifie si SCORE_FILE existe et contient une valeur valide
 if not os.path.exists(SCORE_FILE) or not open(SCORE_FILE).readlines():
     with open(SCORE_FILE, "w") as file:
-        file.write("1\n")  # Initialize score to 0 if file is missing or invalid
+        file.write("1\n")  # Initialise le score à 1
 
-# Function to load the score from a file
+# Fonction pour récupérer le score dans le fichier SCORE_FILE
 def load_score():
     with open(SCORE_FILE, "r") as file:
-        file_content = file.readlines()  # Read and clean content
+        file_content = file.readlines()
         content = []
         for line in file_content:
             content.append(int(line.rstrip('\n')))
-        if content[0]:  # Check if the content is a valid number
+        if content[0]:
             return content
         else:
             print(f"Invalid score file content: '{content}'. Resetting score to 0.")
             return 0
 
-# Function to save the score to a file
+# Fonction pour sauvegarder un score
 def save_score(score):
     with open(SCORE_FILE, "a") as file:
         file.write(str(score)+'\n')
 
 
-
+# Classe pour le joueur
 class Player(pygame.sprite.Sprite):
     speed = [10,25]
     images = []
@@ -82,13 +84,18 @@ class Player(pygame.sprite.Sprite):
         self.i_frame = 0
 
     def move(self, direction):
+        # Mouvement horizontal
         if direction: self.facing = direction
         self.rect.move_ip(direction*self.speed[0], 0)
+
+        # Mouvement vertical
         if self.side == -1 and self.rect.top != 0:
             self.rect.move_ip(0, self.side  * self.speed[1])
         elif self.side == 1 and self.rect.top != HEIGHT-75:
             self.rect.move_ip(0, self.side  * self.speed[1])
         self.rect = self.rect.clamp(SCREEN_RECT)
+
+        # Ajustement du sprite selon le côté et la direction du joueur
         if direction > 0:
             if self.side == -1:
                 self.image = self.images[2]
@@ -100,12 +107,13 @@ class Player(pygame.sprite.Sprite):
             else:
                 self.image = self.images[1]
 
-
+    # Fonction appelée lorsque le joueur est touché
     def hit(self):
         self.hp -= 1
-        self.i_frame = 20
+        self.i_frame = 20  # Ajoute des frame d'invincibilité lorsque le joueur est touché
         Life.amount -= 1
 
+# Classe pour l'ennemi Homer
 class Homer(pygame.sprite.Sprite):
     speed = [4,4]
     images = []
@@ -115,6 +123,7 @@ class Homer(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.image = self.images[0]
         self.rect = self.image.get_rect()
+        # Apparaît à un endroit aléatoire de l'écran
         random_top = random.randint(0, HEIGHT)
         random_left = random.randint(0, WIDTH)
         self.rect.top = random_top
@@ -123,12 +132,13 @@ class Homer(pygame.sprite.Sprite):
         self.collision_cooldown = 100
 
     def update(self, player):
+        # Mouvement vertical selon la position du joueur
         if player.rect.top > self.rect.top:
             self.rect.move_ip(0, self.speed[0])
         elif player.rect.top < self.rect.top:
             self.rect.move_ip(0, -self.speed[0])
 
-
+        # Mouvement horizontal selon la position du joueur
         if player.rect.left > self.rect.left:
             self.rect.move_ip(self.speed[0], 0)
             self.image = self.images[1]
@@ -136,17 +146,19 @@ class Homer(pygame.sprite.Sprite):
             self.rect.move_ip(-self.speed[0], 0)
             self.image = self.images[0]
 
+    # Fonction appelée lorsque l'ennemi est touché
     def hit(self):
         self.hp -= 1
         if self.hp <= 0:
             Score.value += round(3000 / Homer.spawn_rate)
             self.kill()
 
+    # Fonction qui gère les attaques et leur temps de rechargement
     def attack(self, player_rect):
         if self.collision_cooldown > 0:
             self.collision_cooldown -= 1
 
-
+# Classe pour l'ennemi Bart
 class Bart(pygame.sprite.Sprite):
     speed = [1,1]
     images = []
@@ -156,6 +168,7 @@ class Bart(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.image = self.images[0]
         self.rect = self.image.get_rect()
+        # Apparaît à un endroit aléatoire de l'écran
         random_top = random.randint(0, HEIGHT)
         random_left = random.randint(0, WIDTH)
         self.rect.top = random_top
@@ -165,12 +178,13 @@ class Bart(pygame.sprite.Sprite):
         self.collision_cooldown = 100
 
     def update(self, player):
+        # Mouvement vertical selon la position du joueur
         if player.rect.top > self.rect.top:
             self.rect.move_ip(0, self.speed[0])
         elif player.rect.top < self.rect.top:
             self.rect.move_ip(0, -self.speed[0])
 
-
+        # Mouvement horizontal selon la position du joueur
         if player.rect.left > self.rect.left:
             self.rect.move_ip(self.speed[0], 0)
             self.image = self.images[1]
@@ -178,12 +192,14 @@ class Bart(pygame.sprite.Sprite):
             self.rect.move_ip(-self.speed[0], 0)
             self.image = self.images[0]
 
+    # Fonction appelée lorsque l'ennemi est touché
     def hit(self):
         self.hp -= 1
         if self.hp <= 0:
             Score.value += round(3000 / Bart.spawn_rate)
             self.kill()
 
+    # Fonction qui gère les attaques et leur temps de rechargement
     def attack(self, player_rect):
         if self.collision_cooldown > 0:
             self.collision_cooldown -= 1
@@ -195,6 +211,7 @@ class Bart(pygame.sprite.Sprite):
             EnemyBullet(list(self.rect.center), list(player_rect), 20, 0)
             self.reloading = 75
 
+# Classe pour l'ennemi Lisa
 class Lisa(pygame.sprite.Sprite):
     speed = [2,2]
     images = []
@@ -206,6 +223,7 @@ class Lisa(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         random_top = random.randint(0, HEIGHT)
         random_left = random.randint(0, WIDTH)
+        # Choisi un point aléatoire de l'écran avant de s'y déplacer
         if random.randint(0, WIDTH) < list(self.rect.center)[0]:
             self.x_direction = -1
         else:
@@ -214,7 +232,7 @@ class Lisa(pygame.sprite.Sprite):
             self.y_direction = -1
         else:
             self.y_direction = 1
-        self.next_move = 30
+        self.next_move = 30 # Délais avant de choisir un autre point
         self.rect.top = random_top
         self.rect.left = random_left
         self.hp = 3
@@ -223,6 +241,7 @@ class Lisa(pygame.sprite.Sprite):
 
     def update(self, player):
         if self.next_move > 0:
+            # Se déplace vers le point sélectionné
             self.rect.move_ip(0, self.speed[0] * self.y_direction)
             self.rect.move_ip(self.speed[0] * self.x_direction, 0)
 
@@ -232,6 +251,7 @@ class Lisa(pygame.sprite.Sprite):
                 self.image = self.images[0]
             self.next_move -= 1
         else:
+            # Choisi un point aléatoire de l'écran
             if random.randint(0, WIDTH) <  list(self.rect.center)[0]:
                 self.x_direction = -1
             else:
@@ -242,14 +262,14 @@ class Lisa(pygame.sprite.Sprite):
                 self.y_direction = 1
             self.next_move = 30
 
-
-
+    # Fonction appelée lorsque l'ennemi est touché
     def hit(self):
         self.hp -= 1
         if self.hp <= 0:
             Score.value += round(3000 / Lisa.spawn_rate)
             self.kill()
 
+    # Fonction qui gère les attaques et leur temps de rechargement
     def attack(self, player_rect):
         if self.collision_cooldown > 0:
             self.collision_cooldown -= 1
@@ -258,6 +278,7 @@ class Lisa(pygame.sprite.Sprite):
             self.reloading -= 1
 
         if self.reloading <= 0:
+            # Tir une balle en direction du joueur et deux autres à proximité de celui-ci
             random_bullet1x = list(player_rect)[0] + random.randint(-200, 200)
             random_bullet1y = list(player_rect)[1] + random.randint(-200, 200)
             random_bullet2x = list(player_rect)[0] + random.randint(-200, 200)
@@ -267,6 +288,7 @@ class Lisa(pygame.sprite.Sprite):
             EnemyBullet(list(self.rect.center), [random_bullet2x, random_bullet2y], 5, 1)
             self.reloading = 150
 
+# Classe pour l'ennemi Maggied
 class Maggie(pygame.sprite.Sprite):
     speed = [6,6]
     images = []
@@ -278,6 +300,7 @@ class Maggie(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         random_top = random.randint(0, HEIGHT)
         random_left = random.randint(0, WIDTH)
+        # Choisi un point aléatoire de l'écran avant de s'y déplacer
         if random.randint(0, WIDTH) < list(self.rect.center)[0]:
             self.x_direction = -1
         else:
@@ -286,7 +309,7 @@ class Maggie(pygame.sprite.Sprite):
             self.y_direction = -1
         else:
             self.y_direction = 1
-        self.next_move = 15
+        self.next_move = 15 # Délais avant de choisir un autre point
         self.rect.top = random_top
         self.rect.left = random_left
         self.hp = 2
@@ -294,6 +317,7 @@ class Maggie(pygame.sprite.Sprite):
 
     def update(self, player):
         if self.next_move > 0:
+            # Se déplace vers le point sélectionné
             self.rect.move_ip(0, self.speed[0] * self.y_direction)
             self.rect.move_ip(self.speed[0] * self.x_direction, 0)
 
@@ -303,6 +327,7 @@ class Maggie(pygame.sprite.Sprite):
                 self.image = self.images[0]
             self.next_move -= 1
         else:
+            # Choisi un point aléatoire de l'écran
             if random.randint(0, WIDTH) < list(self.rect.center)[0]:
                 self.x_direction = -1
             else:
@@ -313,12 +338,14 @@ class Maggie(pygame.sprite.Sprite):
                 self.y_direction = 1
             self.next_move = 15
 
+    # Fonction appelée lorsque l'ennemi est touché
     def hit(self):
         self.hp -= 1
         if self.hp <= 0:
             Score.value +=  round(3000 / Maggie.spawn_rate)
             self.kill()
 
+    # Fonction qui gère les attaques et leur temps de rechargement
     def attack(self, player_rect):
         if self.collision_cooldown > 0:
             self.collision_cooldown -= 1
@@ -335,6 +362,7 @@ class Marge(pygame.sprite.Sprite):
         else:
             self.image = self.images[1]
         self.rect = self.image.get_rect()
+        # Apparaît du même coté que le joueur et se déplace selon la direction en paramètre
         if player.side == 1:
             self.rect.bottom = HEIGHT
         else:
@@ -355,11 +383,13 @@ class Marge(pygame.sprite.Sprite):
         if self.rect.left <= -100 or self.rect.left >= WIDTH + 100:
             self.kill()
 
+    # Fonction appelée lorsque l'ennemi est touché
     def hit(self):
         self.hp -= 1
         if self.hp <= 0:
             self.kill()
 
+    # Fonction qui gère les attaques et leur temps de rechargement
     def attack(self, player_rect):
         if self.collision_cooldown > 0:
             self.collision_cooldown -= 1
@@ -373,6 +403,7 @@ class Abraham(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.image = self.images[0]
         self.rect = self.image.get_rect()
+        # Choisi un point aléatoire de l'écran avant de s'y déplacer
         if random.randint(0, WIDTH) <  list(self.rect.center)[0]:
             self.x_direction = -1
         else:
@@ -381,7 +412,7 @@ class Abraham(pygame.sprite.Sprite):
             self.y_direction = -1
         else:
             self.y_direction = 1
-        self.next_move = 40
+        self.next_move = 40 # Délais avant de choisir un autre point
         self.rect.top = HEIGHT/2-100
         self.rect.left = WIDTH/2-50
         self.hp = 50
@@ -392,6 +423,7 @@ class Abraham(pygame.sprite.Sprite):
 
     def update(self, player):
         if self.next_move > 0:
+            # Se déplace vers le point sélectionné
             self.rect.move_ip(0, self.speed[0] * self.y_direction)
             self.rect.move_ip(self.speed[0] * self.x_direction, 0)
 
@@ -401,6 +433,7 @@ class Abraham(pygame.sprite.Sprite):
                 self.image = self.images[0]
             self.next_move -= 1
         else:
+            # Choisi un point aléatoire de l'écran
             if random.randint(0, WIDTH) <  list(self.rect.center)[0]:
                 self.x_direction = -1
             else:
@@ -411,15 +444,15 @@ class Abraham(pygame.sprite.Sprite):
                 self.y_direction = 1
             self.next_move = 40
 
-
-
+    # Fonction appelée lorsque l'ennemi est touché
     def hit(self):
         self.hp -= 1
         if self.hp <= 0:
             Score.value += 2000
-            Player.victory = 1
+            Player.victory = 1 # Si cet ennemi meurt la partie est gagnée
             self.kill()
 
+    # Fonction qui gère les attaques et leur temps de rechargement
     def attack(self, player_rect):
         if self.collision_cooldown > 0:
             self.collision_cooldown -= 1
@@ -434,10 +467,12 @@ class Abraham(pygame.sprite.Sprite):
             self.reloading3 -= 1
 
         if self.reloading <= 0:
+            # Tir une balle vers le joueur
             EnemyBullet(list(self.rect.center), list(player_rect), 7, 3)
             self.reloading = 40
 
         if self.reloading2 <= 0:
+            # Tir des balles dans toutes les directions
             pos = list(self.rect.center)
             EnemyBullet(list(self.rect.center), [pos[0]+200, pos[1]], 10, 2)
             EnemyBullet(list(self.rect.center), [pos[0]-200, pos[1]], 10, 2)
@@ -451,6 +486,7 @@ class Abraham(pygame.sprite.Sprite):
             self.reloading2 = 75
 
         if self.reloading3 <= 0:
+            # Tir une balle dans une direction aléatoire
             pos = list(self.rect.center)
             random_bullet1x = pos[0] + random.randint(-200, 200)
             random_bullet1y = pos[1] + random.randint(-200, 200)
@@ -458,7 +494,7 @@ class Abraham(pygame.sprite.Sprite):
             self.reloading3 = 15
 
 
-
+# Classe pour les balles du joueur
 class Bullet(pygame.sprite.Sprite):
     speed = 15
     images = []
@@ -496,7 +532,7 @@ class Bullet(pygame.sprite.Sprite):
         self.x += self.x_speed
         self.y += self.y_speed
 
-
+# Classe pour les balles des ennemis
 class EnemyBullet(pygame.sprite.Sprite):
     images = []
     def __init__(self, initial_pos, target_pos, speed, img):
@@ -531,7 +567,7 @@ class EnemyBullet(pygame.sprite.Sprite):
         self.x += self.x_speed
         self.y += self.y_speed
 
-
+# Classe pour le timer de la partie
 class Timer(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self, self.containers)
@@ -551,7 +587,7 @@ class Timer(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(WIDTH/2-50, 20)
 
 
-
+# Classe pour la barre de vie du joueur
 class Life(pygame.sprite.Sprite):
     images = []
     amount = 0
@@ -569,7 +605,7 @@ class Life(pygame.sprite.Sprite):
         if self.id >= self.amount:
             self.kill()
 
-
+# Clase pour le score de la partie
 class Score(pygame.sprite.Sprite):
     value = 0
 
@@ -586,18 +622,18 @@ class Score(pygame.sprite.Sprite):
         self.image = self.font.render(str(Score.value), 0, self.color)
         self.rect = self.image.get_rect().move(WIDTH-200, 20)
 
-
+# Fonction pour écrire un texte
 def draw_text(text, font, color, surface, x, y):
     text_obj = font.render(text, True, color)
     text_rect = text_obj.get_rect(center=(x, y))
     surface.blit(text_obj, text_rect)
 
+# Fonction pour recharger l'affichage des scores
 def reload_score(score_array):
     scores_text = []
     for i, item in enumerate(score_array):
         if i > 2:
             break
-        # Positionner les boutons à 50 pixels du bord gauche
         rect = pygame.Rect(800, HEIGHT // 2 - 150 + i * 100, 250, 80)
         scores_text.append((str(item), rect))
     return scores_text
@@ -609,8 +645,7 @@ def main():
     pygame.init()
     pygame.display.set_caption("Touhou : Spider Cochon")
 
-    # Load images, assign to sprite classes
-    # (do this before the classes are used, after screen setup)
+    # Chargement des images
     img = load_image('cochon.png')
     Player.images = [img, pygame.transform.flip(img, 1, 0), pygame.transform.flip(img, 0, 1), pygame.transform.flip(img, 1, 1)]
     img = load_image('homer.png')
@@ -631,7 +666,7 @@ def main():
     img = load_image('Bacon.png')
     Life.images = [img]
 
-
+    # Chargement des scores
     game_music = [
         load_sound('Flower of Soul ~ Another Dream (Touhou 9, PoFV) [HD].mp3'),
         load_sound('Night-of-night.mp3'),
@@ -646,13 +681,13 @@ def main():
     victory_sound = load_sound('FF VII victory theme.mp3')
 
 
-    # Initialize Game Groups
+    # Initialisation des groupes
     enemies = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
     enemies_bullets = pygame.sprite.Group()
     all = pygame.sprite.RenderUpdates()
 
-    # assign default groups to each sprite class
+    # Affectation des groupes aux classes
     Homer.containers = enemies, all
     Bart.containers = enemies, all
     Lisa.containers = enemies, all
@@ -682,7 +717,7 @@ def main():
     score_tab = reversed(np.sort(load_score()))
     score_text = []
 
-    # create the background, tile the bgd image
+    # Creation du fond
     background = load_image('image_menu.png')
     background = pygame.transform.scale(background, SCREEN_RECT.size)
     SCREEN.blit(background, (0, 0))
@@ -708,13 +743,14 @@ def main():
     timer = pygame.USEREVENT + 1
     pygame.time.set_timer(timer, 1000)
 
+    # Instantiation du joueur, timer, et score
     player = Player(SCREEN_RECT)
     game_timer = Timer()
     Score()
 
-    active_enemies = 0
+    active_enemies = 0 # Nombre d'ennemis en vie
 
-    current_page = 'menu'
+    current_page = 'menu' # Page actuelle
 
     menu_music.play()
 
@@ -749,13 +785,13 @@ def main():
             SCREEN.blit(background, (0, 0))
 
             draw_text('Classement', font, YELLOW, SCREEN, 950, HEIGHT // 2 - 200)
-
+            # Affichage des scores
             for item, rect in score_text:
 
                 # Dessiner le texte du bouton
                 draw_text(item, font, YELLOW, SCREEN, rect.centerx, rect.centery)
 
-
+            # Affichage des boutons
             for item, rect in buttons_menu:
                 if rect.collidepoint(mouse_pos):
                     pygame.draw.rect(SCREEN, HIGHLIGHT, rect)  # Surbrillance
@@ -767,8 +803,6 @@ def main():
                 SCREEN.blit(background, (0, 0))
 
             pygame.display.flip()
-
-
 
 
         if current_page == 'end':
@@ -803,6 +837,7 @@ def main():
             draw_text('Score', font, YELLOW, SCREEN, 950, HEIGHT // 2 - 100)
             draw_text(str(Score.value), font, YELLOW, SCREEN, 950, HEIGHT // 2)
 
+            # Affichage des boutons
             for item, rect in buttons_end:
                 if rect.collidepoint(mouse_pos):
                     pygame.draw.rect(SCREEN, HIGHLIGHT, rect)  # Surbrillance
@@ -820,6 +855,7 @@ def main():
 
         elif current_page == 'game':
 
+            # Scipt pour gérer l'apparition des ennemis, max 5 à la fois
             if active_enemies < 5 and game_timer.timer > 0:
                 if random.randint(0,100) <= 2:
                     spawn_rate_total = Homer.spawn_rate + Bart.spawn_rate + Lisa.spawn_rate + Maggie.spawn_rate
@@ -841,7 +877,7 @@ def main():
                         Maggie()
                         active_enemies += 1
 
-                        
+            # Script qui gère l'apparition de l'ennemi Marge
             if random.randint(0, 1000) <= Marge.spawn_rate and game_timer.timer > 0:
                 Marge(player, random.randint(0,1))
 
@@ -849,6 +885,7 @@ def main():
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
+                    # Tir une balle si leur joueur ne recharge pas
                     if player.reloading <= 0:
                         Bullet(list(player.rect.topleft), list(pygame.mouse.get_pos()))
                         player.reloading = 5
@@ -856,6 +893,7 @@ def main():
                     if game_timer.timer > 0:
                         game_timer.timer -= 1
                     if game_timer.timer == 0:
+                        # Lorsque le timer atteint 0 nettoie les sprites puis fait apparaitre le boss
                         for enemy in enemies:
                             enemy.kill()
                         for bullet in enemies_bullets:
@@ -864,26 +902,30 @@ def main():
                         Abraham()
                         game_timer.timer -= 1
 
+            # Décrémente le temps de rechargement du joueur
             if player.reloading > 0:
                 player.reloading -= 1
 
+            # Effectue les action d'attaque des ennemis
             for enemy in enemies:
                 enemy.attack(player.rect)
 
-            # clear/erase the last drawn sprites
+            # Supprimer les sprites de l'écran
             all.clear(SCREEN, background)
 
-            # update all the sprites
+            # Met à jour les sprites
             all.update(player=player)
 
 
             keystate = pygame.key.get_pressed()
-
+            # Gère les déplacements du joueur
             direction = keystate[K_d] - keystate[K_q]
             if keystate[K_z] and (player.rect.top == 0 or player.rect.top == HEIGHT-75):
                 player.side = -player.side
             player.move(direction)
 
+
+            # Partie de gestion des collisions entre les sprites, en cas de collision avec le joueur on vérifie s'il est actuellement invincible
             for enemy in pygame.sprite.spritecollide(player, enemies, 0):
                 if not enemy.collision_cooldown and not player.i_frame:
                     player.hit()
@@ -900,15 +942,17 @@ def main():
                     active_enemies -= 1
                 enemy.hit()
 
+            # Décrémente la durée d'invincibilité du joueur
             if player.i_frame > 0:
                 player.i_frame -= 1
 
-
+            # Condition de fin de partie si le joueur meurt ou que le boss est tué
             if player.hp <= 0 or player.victory:
                 if not Player.victory:
                     death_sound.play()
                 else:
                     victory_sound.play()
+                # On supprime tous les sprites
                 for enemy in enemies:
                     enemy.kill()
                 for bullet in bullets:
@@ -917,6 +961,7 @@ def main():
                     bullet.kill()
                 active_enemies = 0
 
+                # Calcule du score et enregistrement
                 Player.victory = 0
                 Score.value += Life.amount * 200
                 Life.amount = 0
